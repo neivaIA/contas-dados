@@ -36,5 +36,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Atualiza eleições municipais (TSE)"
-          git pull --rebase origin main
+          git pull --rebase -X theirs origin main
           git push
