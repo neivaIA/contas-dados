@@ -2,7 +2,7 @@ name: Atualizar arrecadação (Tesouro / SICONFI)
 
 on:
   schedule:
-    - cron: "41 10 * * *" # todo dia às 07:41 (Brasília); só busca o que ainda falta
+    - cron: "41 */6 * * *" # a cada 6 horas (07:41, 13:41, 19:41, 01:41 em Brasília); só busca o que ainda falta
   workflow_dispatch:
 
 permissions:

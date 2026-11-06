@@ -10,7 +10,7 @@ só os agendamentos. A chave de acesso ao repositório do site fica no segredo `
 |---|---|
 | `dados.yml` (gastos, votações, emendas) | todo dia, 06:17 |
 | `contratos.yml` (PNCP) | todo dia, 06:13 |
-| `arrecadacao.yml` (SICONFI, rankings) | todo dia, 07:41 |
+| `arrecadacao.yml` (SICONFI, rankings) | a cada 6 horas |
 | `federal.yml` (cartão corporativo e viagens) | segundas, 07:53 |
 | `municipais.yml` (eleitos em 2024) | dia 3 de cada mês |
 | `ideb.yml` (INEP) | dia 5 de cada mês |
