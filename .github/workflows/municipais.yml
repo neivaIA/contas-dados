@@ -1,0 +1,40 @@
+name: Atualizar eleições municipais (TSE)
+
+on:
+  schedule:
+    - cron: "29 11 3 * *" # dia 3 de cada mês (o TSE corrige dados de vez em quando)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: municipais
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: neivaIA/apuracao-2026
+          token: ${{ secrets.SITE_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prefeitos, vices e vereadores eleitos
+        run: python tools/municipais.py --ano 2024
+      - name: Salvar no repositório se algo mudou
+        run: |
+          git add data/municipais
+          if git diff --cached --quiet; then
+            echo "Sem mudanças nos dados."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Atualiza eleições municipais (TSE)"
+          git pull --rebase origin main
+          git push

@@ -1,0 +1,53 @@
+name: Atualizar dados públicos (gastos, votações da Câmara e do Senado, emendas)
+
+on:
+  schedule:
+    - cron: "17 9 * * *" # todo dia às 06:17 (Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dados
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: neivaIA/apuracao-2026
+          token: ${{ secrets.SITE_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Gastos da Câmara (CEAP)
+        continue-on-error: true
+        run: python tools/gastos.py --casa ceap
+      - name: Gastos do Senado (CEAPS)
+        continue-on-error: true
+        run: python tools/gastos.py --casa ceaps
+      - name: Votações do plenário da Câmara
+        continue-on-error: true
+        run: python tools/votos.py
+      - name: Votações do plenário do Senado
+        continue-on-error: true
+        run: python tools/votos_senado.py
+      - name: Emendas parlamentares
+        continue-on-error: true
+        run: python tools/emendas.py
+      - name: Salvar no repositório se algo mudou
+        run: |
+          git add data
+          if git diff --cached --quiet; then
+            echo "Sem mudanças nos dados."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Atualiza dados públicos (gastos, votações, emendas)"
+          git pull --rebase origin main
+          git push

@@ -1,0 +1,44 @@
+name: Atualizar arrecadação (Tesouro / SICONFI)
+
+on:
+  schedule:
+    - cron: "41 10 * * *" # todo dia às 07:41 (Brasília); só busca o que ainda falta
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arrecadacao
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: neivaIA/apuracao-2026
+          token: ${{ secrets.SITE_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Impostos e repasses de cidades e estados
+        run: python tools/arrecadacao.py --limite-min 60 --threads 4
+      - name: Salvar no repositório se algo mudou
+        if: always()
+        run: |
+          git add data/arrecadacao data/cidades.json
+          if git diff --cached --quiet; then
+            echo "Sem mudanças nos dados."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Atualiza arrecadação (SICONFI)"
+          git pull --rebase origin main
+          python tools/rankings.py
+          git add data/rankings.json
+          git diff --cached --quiet || git commit -m "Atualiza rankings"
+          git push

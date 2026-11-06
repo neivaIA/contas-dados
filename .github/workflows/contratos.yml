@@ -1,0 +1,52 @@
+name: Atualizar contratos das prefeituras (PNCP)
+on:
+  schedule:
+    - cron: "13 9 * * *"   # 06:13 em Brasília
+  workflow_dispatch:
+    inputs:
+      limite:
+        description: "Minutos de coleta"
+        default: "30"
+permissions:
+  contents: read
+concurrency:
+  group: contratos
+  cancel-in-progress: false
+jobs:
+  contratos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ secrets.SITE_TOKEN }}
+      GH_REPO: neivaIA/apuracao-2026
+      REL: pncp-dados
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: neivaIA/apuracao-2026
+          token: ${{ secrets.SITE_TOKEN }}
+      # os registros brutos ficam como anexos de uma release (fora do histórico do git)
+      - name: Baixar registros já coletados
+        run: |
+          mkdir -p pncp-trabalho
+          gh release view "$REL" >/dev/null 2>&1 || gh release create "$REL" --title "Dados brutos do PNCP (uso interno)" --notes "Contratos municipais do PNCP em forma compacta, usados por tools/contratos.py. Não é uma versão do site."
+          gh release download "$REL" -D pncp-trabalho --clobber || true
+          ls -la pncp-trabalho
+          touch .marca
+      - name: Coletar e resumir
+        run: python3 tools/contratos.py --limite-min "${{ github.event.inputs.limite || '30' }}" --anterior-desde 2026-12-01
+      - name: Guardar registros
+        if: always()
+        run: |
+          novos=$(find pncp-trabalho -type f -newer .marca)
+          [ -n "$novos" ] && gh release upload "$REL" $novos --clobber || echo "nada novo"
+      - name: Salvar resumo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add data/contratos
+          git commit -m "Atualiza contratos das prefeituras (PNCP)" || exit 0
+          for i in 1 2 3; do
+            git pull --rebase origin main && python3 tools/rankings.py && git add data/rankings.json && { git diff --cached --quiet || git commit -m "Atualiza rankings"; } && git push && break
+            sleep 10
+          done

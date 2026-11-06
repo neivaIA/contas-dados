@@ -1,0 +1,35 @@
+name: Atualizar contas das campanhas (TSE)
+on:
+  schedule:
+    - cron: "47 12 7 * *"   # dia 7 de cada mês (o TSE reprocessa as prestações de contas)
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: campanhas
+  cancel-in-progress: false
+jobs:
+  campanhas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: neivaIA/apuracao-2026
+          token: ${{ secrets.SITE_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Receitas e despesas das campanhas de 2024
+        run: python tools/campanhas.py --ano 2024
+      - name: Salvar se algo mudou
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/campanhas
+          git diff --cached --quiet -- data/campanhas/2024/m && { echo "Sem mudanças."; exit 0; }
+          git commit -m "Atualiza contas das campanhas (TSE)"
+          for i in 1 2 3; do
+            git pull --rebase origin main && python tools/rankings.py && git add data/rankings.json && { git diff --cached --quiet || git commit -m "Atualiza rankings"; } && git push && break
+            sleep 10
+          done

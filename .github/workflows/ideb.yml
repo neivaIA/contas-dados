@@ -1,0 +1,36 @@
+name: Atualizar IDEB (INEP)
+on:
+  schedule:
+    - cron: "27 11 5 * *"   # dia 5 de cada mês; o IDEB sai a cada dois anos, em agosto
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ideb
+  cancel-in-progress: false
+jobs:
+  ideb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: neivaIA/apuracao-2026
+          token: ${{ secrets.SITE_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q openpyxl
+      - name: Baixar e resumir o IDEB por cidade
+        run: python tools/ideb.py
+      - name: Salvar se algo mudou
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/ideb
+          git diff --cached --quiet -- data/ideb/m && { echo "IDEB sem mudanças."; exit 0; }
+          git commit -m "Atualiza IDEB (INEP)"
+          for i in 1 2 3; do
+            git pull --rebase origin main && python tools/rankings.py && git add data/rankings.json && { git diff --cached --quiet || git commit -m "Atualiza rankings"; } && git push && break
+            sleep 10
+          done

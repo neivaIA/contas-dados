@@ -1,0 +1,41 @@
+name: Atualizar cartão corporativo e viagens (Portal da Transparência)
+
+on:
+  schedule:
+    - cron: "53 10 * * 1" # segundas, 07:53 (Brasília)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: federal
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: neivaIA/apuracao-2026
+          token: ${{ secrets.SITE_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Cartão corporativo e viagens do governo federal
+        run: python tools/federal.py
+      - name: Salvar no repositório se algo mudou
+        if: always()
+        run: |
+          git add data/federal
+          if git diff --cached --quiet; then
+            echo "Sem mudanças nos dados."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Atualiza cartão corporativo e viagens"
+          git pull --rebase origin main
+          git push
