@@ -1,0 +1,36 @@
+name: Atualizar indicadores (DataSUS e Censo)
+on:
+  schedule:
+    - cron: "43 9 12 * *"   # dia 12 de cada mês; os dados finais do DataSUS saem uma vez por ano
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: indicadores
+  cancel-in-progress: false
+jobs:
+  indicadores:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: neivaIA/apuracao-2026
+          token: ${{ secrets.SITE_TOKEN }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q pyreaddbc dbfread
+      - name: Baixar e resumir os indicadores por cidade
+        run: python tools/indicadores.py
+      - name: Salvar se algo mudou
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/indicadores
+          git diff --cached --quiet && { echo "Indicadores sem mudanças."; exit 0; }
+          git commit -m "Atualiza indicadores (DataSUS e Censo 2022)"
+          for i in 1 2 3; do
+            git pull --rebase -X theirs origin main && python tools/rankings.py && git add data/rankings.json data/rankings-resumo.json && { git diff --cached --quiet || git commit -m "Atualiza rankings"; } && git push && break
+            sleep 10
+          done
