@@ -37,5 +37,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Atualiza cartão corporativo e viagens"
-          git pull --rebase -X theirs origin main
-          git push
+          ok=0
+          for i in 1 2 3 4 5; do
+            if git pull --rebase -X theirs origin main && git push; then ok=1; break; fi
+            echo "push recusado (outra rotina gravou ao mesmo tempo); tentativa $i"; git rebase --abort 2>/dev/null || true; sleep $((i*15))
+          done
+          [ "$ok" = 1 ] || exit 1
