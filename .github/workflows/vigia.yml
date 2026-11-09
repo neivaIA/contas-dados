@@ -1,0 +1,59 @@
+name: Vigia das rotinas
+# O GitHub atrasa ou pula horários agendados quando está sobrecarregado, e desliga os agendamentos de repositórios
+# públicos sem nenhum commit há 60 dias. Este vigia roda de hora em hora:
+#  1. se uma rotina passou do prazo sem rodar, dispara ela na mão;
+#  2. uma vez por mês grava a data em .github/vivo.txt, para o repositório nunca ficar 60 dias parado.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: write
+concurrency:
+  group: vigia
+  cancel-in-progress: false
+jobs:
+  vigia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Disparar rotinas atrasadas
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # rotina  prazo máximo sem rodar (horas)
+          while read wf horas; do
+            ult=$(gh api "repos/${{ github.repository }}/actions/workflows/$wf/runs?per_page=1" --jq '.workflow_runs[0].created_at // ""')
+            rodando=$(gh api "repos/${{ github.repository }}/actions/workflows/$wf/runs?status=in_progress&per_page=1" --jq '.total_count')
+            fila=$(gh api "repos/${{ github.repository }}/actions/workflows/$wf/runs?status=queued&per_page=1" --jq '.total_count')
+            idade=999999
+            [ -n "$ult" ] && idade=$(( ( $(date +%s) - $(date -d "$ult" +%s) ) / 3600 ))
+            if [ "$idade" -ge "$horas" ] && [ "$rodando" = "0" ] && [ "$fila" = "0" ]; then
+              echo "$wf: última execução há ${idade}h (prazo ${horas}h) — disparando"
+              gh api -X POST "repos/${{ github.repository }}/actions/workflows/$wf/dispatches" -f ref=main || echo "falhou ao disparar $wf"
+            else
+              echo "$wf: ok (última há ${idade}h)"
+            fi
+          done <<'LISTA'
+          arrecadacao.yml 9
+          dados.yml 30
+          contratos.yml 30
+          federal.yml 200
+          campanhas.yml 800
+          municipais.yml 800
+          ideb.yml 800
+          indicadores.yml 800
+          LISTA
+      - name: Manter o repositório ativo
+        run: |
+          ult=$(git log -1 --format=%ct)
+          if [ $(( $(date +%s) - ult )) -gt $(( 30 * 86400 )) ]; then
+            date -u +%Y-%m-%dT%H:%M:%SZ > .github/vivo.txt
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add .github/vivo.txt && git commit -m "Mantém os agendamentos ativos" && git push
+          else
+            echo "último commit há menos de 30 dias"
+          fi
