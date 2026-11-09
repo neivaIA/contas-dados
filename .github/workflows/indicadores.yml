@@ -31,6 +31,6 @@ jobs:
           git diff --cached --quiet && { echo "Indicadores sem mudanças."; exit 0; }
           git commit -m "Atualiza indicadores (DataSUS e Censo 2022)"
           for i in 1 2 3; do
-            git pull --rebase -X theirs origin main && python tools/rankings.py && git add data/rankings.json data/rankings-resumo.json data/rankings-uf && { git diff --cached --quiet || git commit -m "Atualiza rankings"; } && git push && break
+            git pull --rebase -X theirs origin main && python tools/rankings.py && git add data/rankings.json data/rankings-resumo.json data/rankings-uf data/rankings-t data/arrecadacao/uf && { git diff --cached --quiet || git commit -m "Atualiza rankings"; } && git push && break
             sleep 10
           done

@@ -39,6 +39,6 @@ jobs:
           git commit -m "Atualiza arrecadação (SICONFI)"
           git pull --rebase -X theirs origin main
           python tools/rankings.py
-          git add data/rankings.json data/rankings-resumo.json data/rankings-uf
+          git add data/rankings.json data/rankings-resumo.json data/rankings-uf data/rankings-t data/arrecadacao/uf
           git diff --cached --quiet || git commit -m "Atualiza rankings"
           git push

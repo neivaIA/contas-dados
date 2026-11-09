@@ -47,6 +47,6 @@ jobs:
           git add data/contratos
           git commit -m "Atualiza contratos das prefeituras (PNCP)" || exit 0
           for i in 1 2 3; do
-            git pull --rebase -X theirs origin main && python3 tools/rankings.py && git add data/rankings.json data/rankings-resumo.json data/rankings-uf && { git diff --cached --quiet || git commit -m "Atualiza rankings"; } && git push && break
+            git pull --rebase -X theirs origin main && python3 tools/rankings.py && git add data/rankings.json data/rankings-resumo.json data/rankings-uf data/rankings-t data/arrecadacao/uf && { git diff --cached --quiet || git commit -m "Atualiza rankings"; } && git push && break
             sleep 10
           done
